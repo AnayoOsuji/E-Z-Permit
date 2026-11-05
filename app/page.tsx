@@ -24,6 +24,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [log, setLog] = useState<string[]>([]);
   const [checklist, setChecklist] = useState<ChecklistResult | null>(null);
+  const [checklistHidden, setChecklistHidden] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
@@ -63,6 +64,7 @@ export default function Home() {
     abortRef.current = ctrl;
     setLoading(true);
     setChecklist(null);
+    setChecklistHidden(false);
     setLog([]);
 
     try {
@@ -220,7 +222,21 @@ export default function Home() {
         </section>
       )}
 
-      <div ref={resultRef}>{checklist && <ChecklistView checklist={checklist} />}</div>
+      <div ref={resultRef}>
+        {checklist && (
+          <div className="no-print" style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+            <button
+              type="button"
+              className="btn-ghost"
+              aria-expanded={!checklistHidden}
+              onClick={() => setChecklistHidden((h) => !h)}
+            >
+              {checklistHidden ? "Show my checklist" : "Hide my checklist"}
+            </button>
+          </div>
+        )}
+        {checklist && !checklistHidden && <ChecklistView checklist={checklist} />}
+      </div>
     </main>
   );
 }
