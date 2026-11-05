@@ -42,6 +42,8 @@ export type Checklist = z.infer<typeof Checklist>;
 export type ChecklistResult = Checklist & {
   source: "seed" | "live";
   generatedAt: string;
+  // The public guide this checklist matches ("tx/austin/food-truck"), so it can be saved and tracked. Absent for AI drafts and generic checklists.
+  guideId?: string | null;
 };
 
 export const ChecklistRequest = z.object({

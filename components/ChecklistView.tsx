@@ -2,14 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { totalCost, type ChecklistResult, type Step } from "../lib/checklist.ts";
-
-const usd = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-
-export function costRange(min: number, max: number): string {
-  if (max === 0) return "Free";
-  if (min === max) return usd(min);
-  return `${usd(min)} – ${usd(max)}`;
-}
+import { costRange } from "../lib/format.ts";
+import { SaveProgress } from "./SaveProgress.tsx";
+import { StepDetails } from "./StepDetails.tsx";
 
 function storageKey(c: ChecklistResult) {
   return `ezpermit:done:${c.city}|${c.state}|${c.businessType}|${c.generatedAt}`;
@@ -90,6 +85,12 @@ export function ChecklistView({ checklist }: { checklist: ChecklistResult }) {
         ))}
       </ol>
 
+      {checklist.guideId && (
+        <div className="no-print" style={{ marginTop: 22 }}>
+          <SaveProgress guideId={checklist.guideId} />
+        </div>
+      )}
+
       <div className="notes">
         {checklist.caveats.length > 0 && (
           <div className="note warn">
@@ -142,41 +143,7 @@ function StepCard({ index, step, done, onToggle }: { index: number; step: Step; 
           <span>{step.agency}</span>
         </div>
       </div>
-      <div className="step-body">
-        <p>{step.description}</p>
-        <div className="facts">
-          <div className="fact">
-            <strong>Estimated cost</strong>
-            <span className="money">{costRange(step.costMin, step.costMax)}</span>
-            {step.costNote && <div>{step.costNote}</div>}
-          </div>
-          <div className="fact">
-            <strong>Timeline</strong>
-            {step.timeline}
-          </div>
-        </div>
-        {step.forms.length > 0 && (
-          <div>
-            <div className="eyebrow" style={{ marginBottom: 4 }}>
-              Forms to file
-            </div>
-            <ul className="forms">
-              {step.forms.map((f, i) => (
-                <li key={i}>{f}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {step.links.length > 0 && (
-          <div className="links">
-            {step.links.map((l, i) => (
-              <a key={i} className="link-pill" href={l.url} target="_blank" rel="noopener noreferrer">
-                {l.label} <span aria-hidden="true">↗</span>
-              </a>
-            ))}
-          </div>
-        )}
-      </div>
+      <StepDetails step={step} />
     </li>
   );
 }

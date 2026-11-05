@@ -30,7 +30,8 @@ const fieldBorder = (invalid: boolean) => (invalid ? "border-stamp" : "border-ru
 
 type Phase = "form" | "analyzing";
 
-export function PermitWizard({ userId }: { userId: string }) {
+/** `initial` pre-fills the form (from a public guide's "Get your personalized roadmap" button) and wins over a saved draft. */
+export function PermitWizard({ userId, initial }: { userId: string; initial?: WizardValues }) {
   const router = useRouter();
   const notify = useSnackbar();
   const [step, setStep] = useState(0);
@@ -49,6 +50,13 @@ export function PermitWizard({ userId }: { userId: string }) {
 
   // Bring back the draft after a refresh. Read in an effect (not during render) so server and client HTML match.
   useEffect(() => {
+    if (initial) {
+      // Complete answers go straight to the review step.
+      setValues(initial);
+      setStep(firstInvalidStep(initial) ? 0 : LAST_STEP);
+      setRestored(true);
+      return;
+    }
     try {
       const draft = parseDraft(localStorage.getItem(draftKey(userId)));
       if (draft) {
@@ -59,7 +67,7 @@ export function PermitWizard({ userId }: { userId: string }) {
       // Storage unavailable (private window, blocked): start fresh.
     }
     setRestored(true);
-  }, [userId]);
+  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps -- `initial` is only read once, on mount
 
   useEffect(() => {
     if (!restored) return;

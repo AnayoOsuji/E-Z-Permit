@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AuthForm } from "../../components/AuthForm.tsx";
+import { MagicLinkCard } from "../../components/MagicLinkCard.tsx";
 import { safeNextPath } from "../../lib/auth.ts";
 
 export const metadata: Metadata = { title: "Sign in — E-Z Permit" };
@@ -12,6 +13,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         next={safeNextPath(next)}
         initialError={error === "confirm" ? "That confirmation link is invalid or has expired. Sign in or create your account again." : undefined}
       />
+      <MagicLinkCard next={safeNextPath(next)} />
     </main>
   );
 }

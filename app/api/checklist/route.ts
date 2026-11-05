@@ -1,4 +1,5 @@
 import { ChecklistRequest, type Checklist, type StreamEvent } from "../../../lib/checklist.ts";
+import { guideIdForChecklist } from "../../../lib/guides.ts";
 import { liveProvider, researchLive } from "../../../lib/live-research.ts";
 import { buildGenericChecklist, buildSeedChecklist, classify, findSeedCity } from "../../../lib/seed/index.ts";
 
@@ -23,7 +24,10 @@ export async function POST(req: Request) {
     async start(controller) {
       const send = (e: StreamEvent) => controller.enqueue(encoder.encode(JSON.stringify(e) + "\n"));
       const finish = (checklist: Checklist, source: "seed" | "live") =>
-        send({ type: "result", checklist: { ...checklist, source, generatedAt: new Date().toISOString() } });
+        send({
+          type: "result",
+          checklist: { ...checklist, source, generatedAt: new Date().toISOString(), guideId: source === "seed" ? guideIdForChecklist(checklist) : null },
+        });
 
       const finishFromSeed = () => {
         const category = classify(description);

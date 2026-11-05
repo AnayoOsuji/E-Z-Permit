@@ -295,3 +295,10 @@
 }
 .wizard-step { animation: wizard-step-in 0.28s ease-out; }
 @media (prefers-reduced-motion: reduce) { .wizard-step { animation: none; } }
+
+/* ---------- guides, community numbers, footer ---------- */
+
+.community { font-size: 0.88rem; font-weight: 600; color: var(--ok); }
+.verified { font-size: 0.78rem; color: var(--ink-3); }
+.site-footer { margin-top: 48px; border-top: 1px solid var(--rule); padding: 20px 0 32px; color: var(--ink-3); font-size: 0.85rem; }
+.site-footer p { margin: 0; }

@@ -2,11 +2,21 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PermitWizard } from "../../components/PermitWizard.tsx";
+import { STATES } from "../../lib/places.ts";
+import type { WizardValues } from "../../lib/wizard.ts";
 import { createClient, getCurrentUser } from "../../lib/supabase/server.ts";
 
 export const metadata: Metadata = { title: "Dashboard — E-Z Permit" };
 
-export default async function DashboardPage() {
+// Public guide pages link here with ?city=Austin&state=TX&business=Food+Truck to pre-fill the wizard.
+function prefill(query: { city?: string; state?: string; business?: string }): WizardValues | undefined {
+  const state = (query.state ?? "").toUpperCase();
+  if (!query.city && !query.business) return undefined;
+  return { city: (query.city ?? "").slice(0, 80), state: STATES[state] ? state : "", businessType: (query.business ?? "").slice(0, 100) };
+}
+
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ city?: string; state?: string; business?: string }> }) {
+  const initial = prefill(await searchParams);
   // proxy.ts already redirects signed-out visitors; this guards direct renders too.
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/dashboard");
@@ -26,7 +36,7 @@ export default async function DashboardPage() {
       </p>
 
       <div className="mt-8">
-        <PermitWizard userId={user.id} />
+        <PermitWizard userId={user.id} initial={initial} />
       </div>
 
       {recent && recent.length > 0 && (

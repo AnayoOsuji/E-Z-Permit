@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { authErrorMessage, checkPassword, validateAuthForm, type AuthMode } from "../lib/auth.ts";
 import { createClient } from "../lib/supabase/client.ts";
 import { useSnackbar } from "./Snackbar.tsx";
@@ -41,6 +42,8 @@ export function AuthForm({ next, initialError }: { next: string; initialError?: 
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  // True from the moment we redirect until the next page has actually loaded, so the button never stays stuck on "Signing in…".
+  const [navigating, startNavigation] = useTransition();
   const [notice, setNotice] = useState<string | null>(null);
 
   // A problem handed over by the server (e.g. a bad confirmation link) is shown once, as a snackbar.
@@ -80,8 +83,11 @@ export function AuthForm({ next, initialError }: { next: string; initialError?: 
       if (mode === "signin") {
         const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (error) throw error;
-        router.replace(next);
-        router.refresh();
+        startNavigation(() => {
+          router.replace(next);
+          router.refresh();
+        });
+        setLoading(false);
         return;
       }
 
@@ -95,8 +101,11 @@ export function AuthForm({ next, initialError }: { next: string; initialError?: 
       if (data.user && data.user.identities?.length === 0) {
         notify(authErrorMessage({ code: "user_already_exists" }), "error");
       } else if (data.session) {
-        router.replace(next);
-        router.refresh();
+        startNavigation(() => {
+          router.replace(next);
+          router.refresh();
+        });
+        setLoading(false);
         return;
       } else {
         setNotice(`Check ${email.trim()} for a confirmation link to finish creating your account.`);
@@ -170,6 +179,11 @@ export function AuthForm({ next, initialError }: { next: string; initialError?: 
             onChange={(e) => setPassword(e.target.value)}
             aria-describedby={mode === "signup" ? "password-rules" : undefined}
           />
+          {mode === "signin" && (
+            <Link href="/forgot-password" className="justify-self-end text-sm font-semibold">
+              Forgot password?
+            </Link>
+          )}
           {mode === "signup" && (
             <ul id="password-rules" className="m-0 grid list-none grid-cols-1 gap-1 p-0 text-sm sm:grid-cols-2" aria-live="polite">
               {rules.map((r) => (
@@ -209,8 +223,8 @@ export function AuthForm({ next, initialError }: { next: string; initialError?: 
           </div>
         )}
 
-        <button className="btn w-full" type="submit" disabled={loading}>
-          {loading ? copy.busy : copy.submit}
+        <button className="btn w-full" type="submit" disabled={loading || navigating}>
+          {loading || navigating ? copy.busy : copy.submit}
         </button>
       </form>
 

@@ -2,7 +2,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "./lib/supabase/proxy.ts";
 
-const PROTECTED = ["/dashboard"];
+const PROTECTED = ["/dashboard", "/my-roadmaps", "/account"];
 const AUTH_PAGES = ["/login", "/signup"];
 
 export async function proxy(request: NextRequest) {
@@ -26,6 +26,6 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Skip static files, the checklist API and Paystack's webhook, which don't need a session.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/checklist|api/paystack/webhook|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
+  // Skip static files, the checklist API, the public guide pages and Paystack's webhook, which don't need a session.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/checklist|api/paystack/webhook|permits|sitemap.xml|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
 };

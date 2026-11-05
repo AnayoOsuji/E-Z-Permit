@@ -19,7 +19,7 @@ E-Z Permit: a US founder enters a city and business type and gets an ordered per
 - Preflight is not imported; element defaults live in `@layer base`, `.wrap` in `@layer components`.
 
 ### Auth and database (Supabase)
-- Email/password only (sign up, in, out, reset). No OAuth or magic links unless asked.
+- Email/password (with forgot/reset and change password at `/forgot-password` and `/account/password`) plus email magic links (asked for 2026-11-05, used by "Save my progress"). No OAuth unless asked.
 - `@supabase/ssr` with separate browser/server clients (`lib/supabase/`); session refresh in `proxy.ts`. Clients return `null` if env vars are missing.
 - Protect data with RLS, not just app code. `SUPABASE_SERVICE_ROLE_KEY` is server-only and read only in `lib/supabase/admin.ts`.
 - Migrations in `supabase/migrations/` are the schema source of truth and are **not applied automatically**: run in order in the Supabase SQL editor. Test SQL (including RLS) on PGlite before asking the owner to run it.
@@ -46,7 +46,9 @@ E-Z Permit: a US founder enters a city and business type and gets an ordered per
 - Keep this file current: update "Decisions" and "Open items" when something changes.
 
 ## Code map
-- Pages: `/`, `/about`, `/how-it-works`, `/login` + `/signup` (one `AuthForm`), `/dashboard` (wizard + recent roadmaps), `/dashboard/roadmaps/[id]`.
+- Pages: `/`, `/about`, `/how-it-works`, `/login` + `/signup` (one `AuthForm`; login also has `MagicLinkForm`), `/dashboard` (wizard, pre-filled by `?city=&state=&business=`, + recent roadmaps), `/dashboard/roadmaps/[id]`.
+- Public guides: `/permits` and `/permits/[state]/[city]/[business]` (35 pages from `lib/seed`, static, `revalidate` 1 day, HowTo JSON-LD, `sitemap.ts`, `robots.ts`; logic in `lib/guides.ts`). The root layout and `Navbar` read no cookies (`NavLinks` uses `useUser`), which is what keeps them static; do not call `cookies()`/`getCurrentUser()` there. `proxy.ts` skips `/permits`.
+- Progress and reports: `/my-roadmaps` (list, reminder opt-in), `/my-roadmaps/[state]/[city]/[business]` (`TrackedChecklist`: ticks, progress bar, "how many days?" prompt), `/my-roadmaps/save` (GET; saves the guide, records opt-in). Logic in `lib/progress.ts`, `lib/durations.ts`; community numbers come from the `step_duration_stats()` SQL function (median, 3+ reports, readable by anon; raw reports stay private by RLS).
 - `app/api/`: `generate-roadmap` (signed-in only; daily limit 3/24 h, 20 premium; saves as the user), `checklist` (home page, NDJSON; modes `auto`/`live`/`seed`), `checkout`, `paystack/webhook`, `paystack/verify`. `proxy.ts` skips `/api/checklist` and the webhook.
 - Roadmap step links come from the verified built-in data via `lib/roadmap-links.ts` (matched per step at display time); the AI never supplies URLs. `HideableRoadmap` adds the hide/show button.
 - UI: `PermitWizard` (draft kept in `localStorage`, `lib/wizard-storage.ts`), `AnalysisOverlay`, `RoadmapTimeline`, `UnlockButton`, `UpgradeStatus`, `Snackbar` (`useSnackbar().notify`).
@@ -61,14 +63,19 @@ E-Z Permit: a US founder enters a city and business type and gets an ordered per
 | 2026-10-31 | Gemini → OpenRouter, free models only, enforced in code; no web search; research mode also on OpenRouter (Anthropic removed); retry once then fall back |
 | 2026-11-03 | Deployed to Vercel production; env vars set there |
 | 2026-11-05 | Paywall switched off via `PAYWALL_ENABLED=false`; payment code and schema left untouched |
+| 2026-11-05 | Added public SEO guides, magic-link save/track progress, community duration reports (migration `20261105000000`). Guide content stays in `lib/seed` (not duplicated in the DB); step ids are title slugs; reports are keyed by city (`tx/austin`) so shared steps like the EIN pool across business types |
 
 ## Open items
 - **Paystack account can't take USD** ("Currency not supported by merchant"). Set `PAYSTACK_PRICE_CURRENCY` + `PAYSTACK_PRICE_MINOR` (e.g. `NGN`, `3000000`) in `.env.local` and Vercel; the upgrade card still says "$19".
-- Run all three migrations in Supabase if not done.
+- Run all four migrations in Supabase if not done (the newest adds progress, reports, consent; tested on PGlite). Then `npm run seed:example` for demo community numbers (`-- --remove` deletes them).
+- Magic links need the site URL / `https://ez-permit.vercel.app/**` in Supabase redirect URLs, and the link must be opened in the same browser that requested it (PKCE). Supabase email is rate-limited.
+- Reminder emails are NOT sent: consent is stored in `email_consents`; see the TODO in the migration.
+- "Save my progress" appears only on built-in checklists that match a guide (7 seeded cities), not AI drafts or generic checklists.
 - Supabase Auth: add `https://ez-permit.vercel.app` to Site URL / redirect URLs. Paystack test webhook URL: `https://ez-permit.vercel.app/api/paystack/webhook`. Consider setting `NEXT_PUBLIC_SITE_URL`.
 - Stale `GEMINI_API_KEY` / `ANTHROPIC_API_KEY` in `.env.local` are unused; delete and revoke.
 - Free OpenRouter limit: ~20 req/min, ~50/day without purchased credits; beyond that the built-in data is used.
-- Not built: password reset (required by the auth rule), deleting roadmaps, refunds/billing page.
+- Not built: deleting roadmaps, refunds/billing page.
+- Password reset links (like magic links) must be opened in the browser that requested them, and need the redirect URL allowed in Supabase. Supabase "Secure password change" may ask for a recent sign-in.
 - End-to-end tests (fake servers, headless Chrome, PGlite) were run from a scratch folder, not in the repo; only `tests/` unit tests are.
 
 ## Env vars (`.env.local`; template `.env.example`)

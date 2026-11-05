@@ -8,7 +8,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "node --test \"tests/**/*.test.ts\"",
-    "check-links": "node --experimental-strip-types scripts/check-links.ts"
+    "check-links": "node --experimental-strip-types scripts/check-links.ts",
+    "seed:example": "node --env-file=.env.local --experimental-strip-types scripts/seed-example.ts"
   },
   "dependencies": {
     "@openrouter/ai-sdk-provider": "^3.1.0",

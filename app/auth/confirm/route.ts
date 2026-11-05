@@ -21,5 +21,7 @@ export async function GET(request: NextRequest) {
         : { error: new Error("Missing confirmation token") };
     if (!error) return NextResponse.redirect(new URL(next, request.url));
   }
+  // An expired reset link should lead back to asking for a new one, not to the sign-in page.
+  if (next.startsWith("/account/password")) return NextResponse.redirect(new URL("/forgot-password?error=link", request.url));
   return NextResponse.redirect(new URL("/login?error=confirm", request.url));
 }

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Public_Sans } from "next/font/google";
 import { Navbar } from "../components/Navbar.tsx";
+import { SITE_URL } from "../lib/site.ts";
 import { SnackbarProvider } from "../components/Snackbar.tsx";
 import "./globals.css";
 
@@ -8,6 +9,7 @@ const display = Fraunces({ subsets: ["latin"], variable: "--font-display", axes:
 const body = Public_Sans({ subsets: ["latin"], variable: "--font-body" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "E-Z Permit — your city permit roadmap",
   description: "Tell us your city and your business idea. Get a step-by-step checklist of the permits, licenses, costs and official links you need to open.",
 };
@@ -21,6 +23,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SnackbarProvider>
           <Navbar />
           {children}
+          <footer className="site-footer no-print">
+            <div className="wrap">
+              <p>EZ-Permit is guidance, not legal advice. Always confirm with the official agency.</p>
+            </div>
+          </footer>
         </SnackbarProvider>
       </body>
     </html>

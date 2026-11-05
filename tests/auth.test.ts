@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { authErrorMessage, checkPassword, isStrongPassword, isValidEmail, safeNextPath, validateAuthForm } from "../lib/auth.ts";
+import { validatePasswordChange, authErrorMessage, checkPassword, isStrongPassword, isValidEmail, safeNextPath, validateAuthForm } from "../lib/auth.ts";
 
 test("password criteria", () => {
   const unmet = (p: string) => checkPassword(p).filter((r) => !r.met).map((r) => r.id);
@@ -36,6 +36,7 @@ test("auth error messages", () => {
   assert.match(authErrorMessage({ code: "email_not_confirmed" }), /Confirm your email/);
   assert.match(authErrorMessage({ code: "user_already_exists" }), /already exists/);
   assert.match(authErrorMessage({ code: "over_request_rate_limit" }), /Too many attempts/);
+  assert.match(authErrorMessage({ code: "over_email_send_rate_limit" }), /too many emails/);
   assert.match(authErrorMessage({ name: "AuthRetryableFetchError", message: "Failed to fetch", status: 0 }), /couldn't reach/);
   assert.match(authErrorMessage(new TypeError("Failed to fetch")), /couldn't reach/);
   assert.equal(authErrorMessage({ message: "Custom server message" }), "Custom server message");
@@ -48,4 +49,16 @@ test("post-login redirects stay on this site", () => {
   assert.equal(safeNextPath("https://evil.example"), "/dashboard");
   assert.equal(safeNextPath("//evil.example"), "/dashboard");
   assert.equal(safeNextPath("/\\evil.example"), "/dashboard");
+});
+
+test("validatePasswordChange checks strength and confirmation", () => {
+  assert.equal(validatePasswordChange("", ""), "Enter a new password.");
+  assert.match(validatePasswordChange("weak", "weak")!, /requirements/);
+  assert.equal(validatePasswordChange("Passw0rd!", "Passw0rd?"), "Passwords don't match.");
+  assert.equal(validatePasswordChange("Passw0rd!", "Passw0rd!"), null);
+});
+
+test("password reset errors are friendly", () => {
+  assert.match(authErrorMessage({ code: "same_password" }), /different/);
+  assert.match(authErrorMessage({ code: "reauthentication_needed" }), /sign in again/);
 });

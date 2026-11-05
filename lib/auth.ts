@@ -37,6 +37,14 @@ export function validateAuthForm(mode: AuthMode, email: string, password: string
   return null;
 }
 
+/** Problem with a new password and its confirmation, or null when it can be saved. */
+export function validatePasswordChange(password: string, confirm: string): string | null {
+  if (!password) return "Enter a new password.";
+  if (!isStrongPassword(password)) return "Your password doesn't meet all of the requirements yet.";
+  if (password !== confirm) return "Passwords don't match.";
+  return null;
+}
+
 type AuthErrorLike = { code?: string; message?: string; status?: number; name?: string };
 
 /** Turns a Supabase auth error (or a network failure) into a message for the user. */
@@ -50,13 +58,19 @@ export function authErrorMessage(error: unknown): string {
     case "user_already_exists":
     case "email_exists":
       return "An account with this email already exists. Sign in instead.";
+    case "same_password":
+      return "Your new password must be different from your current one.";
+    case "reauthentication_needed":
+      return "For your security, sign in again (or use a fresh reset link) before changing your password.";
     case "weak_password":
       return "That password is too weak. Choose a stronger one.";
     case "email_address_invalid":
       return "That email address isn't accepted. Try a different one.";
     case "over_request_rate_limit":
-    case "over_email_send_rate_limit":
       return "Too many attempts. Wait a minute and try again.";
+    case "over_email_send_rate_limit":
+      // Supabase's built-in mailer allows only a few emails per hour, so "a minute" would be misleading.
+      return "We've sent too many emails recently. Wait a few minutes before trying again, or sign in if you already have an account.";
     case "signup_disabled":
       return "New sign-ups are turned off right now.";
   }
