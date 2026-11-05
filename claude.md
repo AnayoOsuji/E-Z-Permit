@@ -48,6 +48,7 @@ E-Z Permit: a US founder enters a city and business type and gets an ordered per
 ## Code map
 - Pages: `/`, `/about`, `/how-it-works`, `/login` + `/signup` (one `AuthForm`), `/dashboard` (wizard + recent roadmaps), `/dashboard/roadmaps/[id]`.
 - `app/api/`: `generate-roadmap` (signed-in only; daily limit 3/24 h, 20 premium; saves as the user), `checklist` (home page, NDJSON; modes `auto`/`live`/`seed`), `checkout`, `paystack/webhook`, `paystack/verify`. `proxy.ts` skips `/api/checklist` and the webhook.
+- Roadmap step links come from the verified built-in data via `lib/roadmap-links.ts` (matched per step at display time); the AI never supplies URLs. `HideableRoadmap` adds the hide/show button.
 - UI: `PermitWizard` (draft kept in `localStorage`, `lib/wizard-storage.ts`), `AnalysisOverlay`, `RoadmapTimeline`, `UnlockButton`, `UpgradeStatus`, `Snackbar` (`useSnackbar().notify`).
 - Schemas: `lib/checklist.ts`, `lib/roadmap.ts`. Roadmap display and placeholders: `lib/roadmap-view.ts`.
 

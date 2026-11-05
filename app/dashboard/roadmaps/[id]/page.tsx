@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
+import { HideableRoadmap } from "../../../../components/HideableRoadmap.tsx";
 import { RoadmapTimeline } from "../../../../components/RoadmapTimeline.tsx";
 import { UpgradePending, UpgradeSuccess } from "../../../../components/UpgradeStatus.tsx";
 import { isReference } from "../../../../lib/paystack.ts";
+import { linksForSteps } from "../../../../lib/roadmap-links.ts";
 import { RoadmapStep } from "../../../../lib/roadmap.ts";
 import { FREE_STEP_LIMIT, PAYWALL_ENABLED, buildDisplaySteps, isUuid } from "../../../../lib/roadmap-view.ts";
 import { createAdminClient } from "../../../../lib/supabase/admin.ts";
@@ -55,9 +57,12 @@ export default async function RoadmapPage({
     const lockedParsed = z.array(RoadmapStep).safeParse(locked?.steps);
     premiumSteps = lockedParsed.success ? lockedParsed.data : null;
   }
-  const { steps, incomplete } = parsed.success
+  const { steps: built, incomplete } = parsed.success
     ? buildDisplaySteps({ preview: parsed.data, premium: premiumSteps, stepCount: roadmap.step_count ?? 0, isPremium: unlocked })
     : { steps: [], incomplete: false };
+  // Links come from the built-in city data (verified), matched to each step; the AI never supplies a URL.
+  const stepLinks = linksForSteps(built, { city: roadmap.city, state: roadmap.state, business_type: roadmap.business_type });
+  const steps = built.map((s, i) => (s.locked ? s : { ...s, links: stepLinks[i] }));
   const created = new Date(roadmap.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 
   return (
@@ -102,7 +107,9 @@ export default async function RoadmapPage({
 
       <div className="mt-8 sm:mt-10">
         {steps.length > 0 ? (
-          <RoadmapTimeline steps={steps} isPremium={isPremium} roadmapId={id} />
+          <HideableRoadmap>
+            <RoadmapTimeline steps={steps} isPremium={isPremium} roadmapId={id} />
+          </HideableRoadmap>
         ) : (
           <div className="error" role="alert">
             This roadmap&rsquo;s data looks damaged. Try creating a new one from the dashboard.

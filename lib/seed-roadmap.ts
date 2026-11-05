@@ -33,9 +33,13 @@ export function seedStepToRoadmapStep(step: Step, stepNumber: number): RoadmapSt
   };
 }
 
-export function seedRoadmap(req: Pick<RoadmapRequest, "city" | "state" | "business_type">): RoadmapStep[] {
+/** The built-in checklist steps (with their verified links) for a city and business. */
+export function seedSteps(req: Pick<RoadmapRequest, "city" | "state" | "business_type">): Step[] {
   const category = classify(req.business_type);
   const seeded = findSeedCity(req.city, req.state);
-  const checklist = seeded ? buildSeedChecklist(seeded, category) : buildGenericChecklist(req.city, req.state, category);
-  return checklist.steps.map((step, i) => seedStepToRoadmapStep(step, i + 1));
+  return (seeded ? buildSeedChecklist(seeded, category) : buildGenericChecklist(req.city, req.state, category)).steps;
+}
+
+export function seedRoadmap(req: Pick<RoadmapRequest, "city" | "state" | "business_type">): RoadmapStep[] {
+  return seedSteps(req).map((step, i) => seedStepToRoadmapStep(step, i + 1));
 }

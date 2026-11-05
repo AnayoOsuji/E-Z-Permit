@@ -35,6 +35,20 @@ function StepItem({ step }: { step: DisplayStep }) {
             <dd className="m-0 mt-0.5 font-semibold tabular-nums">{step.estimated_cost}</dd>
           </div>
         </dl>
+        {!step.locked && step.links && step.links.length > 0 && (
+          <div className="mt-4" data-testid="step-links">
+            <p className="m-0 text-xs font-bold uppercase tracking-wider text-ink-3">Helpful links</p>
+            <ul className="m-0 mt-1.5 grid list-none gap-1 p-0">
+              {step.links.map((link) => (
+                <li key={link.url}>
+                  <a href={link.url} target="_blank" rel="noopener noreferrer" className="break-words text-sm font-semibold">
+                    {link.label} ↗
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </article>
     </li>
   );

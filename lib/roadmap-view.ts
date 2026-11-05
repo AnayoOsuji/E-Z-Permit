@@ -1,3 +1,4 @@
+import type { Link } from "./checklist.ts";
 import type { RoadmapStep } from "./roadmap.ts";
 
 // Which roadmap steps a user may see. Free accounts get the first FREE_STEP_LIMIT steps in full.
@@ -12,7 +13,7 @@ export const FREE_STEP_LIMIT = 3;
 export const PAYWALL_ENABLED = false;
 export const UNLOCK_MESSAGE = "Unlock your complete local permit guide for a one-time payment of $19";
 
-export type DisplayStep = RoadmapStep & { locked: boolean };
+export type DisplayStep = RoadmapStep & { locked: boolean; links?: Link[] };
 
 export const LOCKED_PLACEHOLDER = {
   title: "Locked permit step",
