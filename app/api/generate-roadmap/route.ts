@@ -1,6 +1,6 @@
 import { RoadmapRequest, RoadmapStep, dailyRoadmapLimit } from "../../../lib/roadmap.ts";
 import { generateRoadmapSteps } from "../../../lib/roadmap-generate.ts";
-import { FREE_STEP_LIMIT, lockSteps } from "../../../lib/roadmap-view.ts";
+import { FREE_STEP_LIMIT, PAYWALL_ENABLED, lockSteps } from "../../../lib/roadmap-view.ts";
 import { seedRoadmap } from "../../../lib/seed-roadmap.ts";
 import { roadmapModel } from "../../../lib/roadmap-model.ts";
 import { createClient } from "../../../lib/supabase/server.ts";
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
   }
   if ((count ?? 0) >= limit) {
     return fail(
-      `You've reached your limit of ${limit} roadmaps in 24 hours.${isPremium ? "" : " Premium accounts get more."} Try again later.`,
+      `You've reached your limit of ${limit} roadmaps in 24 hours.${isPremium || !PAYWALL_ENABLED ? "" : " Premium accounts get more."} Try again later.`,
       429,
     );
   }
@@ -93,5 +93,5 @@ export async function POST(req: Request) {
     }
   }
 
-  return Response.json({ id: saved.id, source, roadmap: isPremium ? steps : lockSteps(steps, false) }, { status: 201 });
+  return Response.json({ id: saved.id, source, roadmap: isPremium || !PAYWALL_ENABLED ? steps : lockSteps(steps, false) }, { status: 201 });
 }

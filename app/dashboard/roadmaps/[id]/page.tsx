@@ -6,7 +6,8 @@ import { RoadmapTimeline } from "../../../../components/RoadmapTimeline.tsx";
 import { UpgradePending, UpgradeSuccess } from "../../../../components/UpgradeStatus.tsx";
 import { isReference } from "../../../../lib/paystack.ts";
 import { RoadmapStep } from "../../../../lib/roadmap.ts";
-import { FREE_STEP_LIMIT, buildDisplaySteps, isUuid } from "../../../../lib/roadmap-view.ts";
+import { FREE_STEP_LIMIT, PAYWALL_ENABLED, buildDisplaySteps, isUuid } from "../../../../lib/roadmap-view.ts";
+import { createAdminClient } from "../../../../lib/supabase/admin.ts";
 import { createClient, getCurrentUser } from "../../../../lib/supabase/server.ts";
 
 export const metadata: Metadata = { title: "Your roadmap — E-Z Permit" };
@@ -41,17 +42,21 @@ export default async function RoadmapPage({
 
   const { data: profile } = await supabase.from("profiles").select("is_premium").eq("id", user.id).maybeSingle();
   const isPremium = profile?.is_premium === true;
+  const unlocked = isPremium || !PAYWALL_ENABLED;
 
   // The free preview comes with the roadmap. Steps 4+ live in a table the database only lets premium users read.
   const parsed = z.array(RoadmapStep).safeParse(roadmap.steps);
   let premiumSteps: RoadmapStep[] | null = null;
-  if (isPremium) {
-    const { data: locked } = await supabase.from("roadmap_premium_steps").select("steps").eq("roadmap_id", id).maybeSingle();
+  if (unlocked) {
+    // Ownership was already checked above (RLS). With the paywall off, free users' steps 4+ are read with
+    // the service role, because RLS only lets premium users read that table.
+    const reader = (!isPremium && createAdminClient()) || supabase;
+    const { data: locked } = await reader.from("roadmap_premium_steps").select("steps").eq("roadmap_id", id).maybeSingle();
     const lockedParsed = z.array(RoadmapStep).safeParse(locked?.steps);
     premiumSteps = lockedParsed.success ? lockedParsed.data : null;
   }
   const { steps, incomplete } = parsed.success
-    ? buildDisplaySteps({ preview: parsed.data, premium: premiumSteps, stepCount: roadmap.step_count ?? 0, isPremium })
+    ? buildDisplaySteps({ preview: parsed.data, premium: premiumSteps, stepCount: roadmap.step_count ?? 0, isPremium: unlocked })
     : { steps: [], incomplete: false };
   const created = new Date(roadmap.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 
@@ -75,7 +80,7 @@ export default async function RoadmapPage({
         </h1>
         <p className="mt-2 text-ink-2" data-testid="roadmap-summary">
           {parsed.success
-            ? isPremium || steps.length <= FREE_STEP_LIMIT
+            ? unlocked || steps.length <= FREE_STEP_LIMIT
               ? `${steps.length} steps, in the order to do them. Created ${created}.`
               : `${steps.length} steps, in the order to do them. You can see the first ${FREE_STEP_LIMIT}. Created ${created}.`
             : "We couldn't read this roadmap."}

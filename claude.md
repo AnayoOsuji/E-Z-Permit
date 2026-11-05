@@ -36,8 +36,8 @@ E-Z Permit: a US founder enters a city and business type and gets an ordered per
 - Start transactions on the server; never trust client price, amount, email or redirect URL (`lib/premium.ts` defines them: $19 USD, override with `PAYSTACK_PRICE_CURRENCY` + `PAYSTACK_PRICE_MINOR` together).
 - Status is decided server-side: `app/api/paystack/webhook/route.ts` (HMAC-SHA512 of raw body with the secret key, `x-paystack-signature`) and `app/api/paystack/verify/route.ts` (upgrades only the signed-in user for their own payment). Both use the service role key.
 
-### Paywall
-Enforced in the database: `roadmaps.steps` holds steps 1-3; steps 4+ live in `roadmap_premium_steps`, readable only by owners with `profiles.is_premium` (RLS). Users have no update policy on `profiles`.
+### Paywall (currently OFF)
+`PAYWALL_ENABLED` in `lib/roadmap-view.ts` is `false` (2026-11-05): all steps show, no payment prompt; the roadmap page reads steps 4+ with the service role. Set it to `true` to restore the lock. Design when on, enforced in the database: `roadmaps.steps` holds steps 1-3; steps 4+ live in `roadmap_premium_steps`, readable only by owners with `profiles.is_premium` (RLS). Users have no update policy on `profiles`.
 
 ### Working rules
 - **Tests never touch real services.** Blank/override every real key (`PAYSTACK_SECRET_KEY=`, `OPENROUTER_API_KEY=`, fake Supabase URL) because Next loads `.env.local`. Use `OPENROUTER_API_BASE` and `PAYSTACK_API_BASE` with fakes. Real OpenRouter tests: free models only, check `GET https://openrouter.ai/api/v1/key` before/after.
@@ -59,6 +59,7 @@ Enforced in the database: `roadmaps.steps` holds steps 1-3; steps 4+ live in `ro
 | 2026-10-30 | Stripe → Paystack (owner's choice); $19 USD defined server-side; only paid, correct-product/amount payments upgrade |
 | 2026-10-31 | Gemini → OpenRouter, free models only, enforced in code; no web search; research mode also on OpenRouter (Anthropic removed); retry once then fall back |
 | 2026-11-03 | Deployed to Vercel production; env vars set there |
+| 2026-11-05 | Paywall switched off via `PAYWALL_ENABLED=false`; payment code and schema left untouched |
 
 ## Open items
 - **Paystack account can't take USD** ("Currency not supported by merchant"). Set `PAYSTACK_PRICE_CURRENCY` + `PAYSTACK_PRICE_MINOR` (e.g. `NGN`, `3000000`) in `.env.local` and Vercel; the upgrade card still says "$19".

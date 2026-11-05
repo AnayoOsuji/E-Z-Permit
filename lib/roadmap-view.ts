@@ -6,6 +6,10 @@ import type { RoadmapStep } from "./roadmap.ts";
 // (the blur is only the look).
 
 export const FREE_STEP_LIMIT = 3;
+
+// Master switch for the paywall. While false (since 2026-11-05) everyone sees every step and no payment
+// prompt is shown. The split storage and RLS stay in place, so turning it back on needs no migration.
+export const PAYWALL_ENABLED = false;
 export const UNLOCK_MESSAGE = "Unlock your complete local permit guide for a one-time payment of $19";
 
 export type DisplayStep = RoadmapStep & { locked: boolean };
