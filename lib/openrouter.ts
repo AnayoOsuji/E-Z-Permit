@@ -46,7 +46,9 @@ export function openRouterModel(modelId: string, env: Env = process.env): Langua
     // Optional attribution OpenRouter shows in its dashboard.
     headers: { "HTTP-Referer": env.NEXT_PUBLIC_SITE_URL?.trim() || "http://localhost:3000", "X-Title": "E-Z Permit" },
     // Never route to an endpoint that charges for prompt or completion tokens.
-    extraBody: { provider: { max_price: { prompt: 0, completion: 0 } } },
+    // The free router often picks "reasoning" models that think for thousands of tokens (45-60 s) before answering;
+    // low effort cuts that to a few hundred (~20 s). It can't be switched off: some free models require reasoning.
+    extraBody: { provider: { max_price: { prompt: 0, completion: 0 } }, reasoning: { effort: "low" } },
   });
   return openrouter.chat(modelId);
 }

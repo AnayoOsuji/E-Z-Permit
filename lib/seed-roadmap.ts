@@ -40,6 +40,11 @@ export function seedSteps(req: Pick<RoadmapRequest, "city" | "state" | "business
   return (seeded ? buildSeedChecklist(seeded, category) : buildGenericChecklist(req.city, req.state, category)).steps;
 }
 
+/** True for the cities with verified built-in data. Their roadmaps skip the AI: it is slow (20-90 s) and no more accurate. */
+export function hasCityData(req: Pick<RoadmapRequest, "city" | "state">): boolean {
+  return findSeedCity(req.city, req.state) !== undefined;
+}
+
 export function seedRoadmap(req: Pick<RoadmapRequest, "city" | "state" | "business_type">): RoadmapStep[] {
   return seedSteps(req).map((step, i) => seedStepToRoadmapStep(step, i + 1));
 }

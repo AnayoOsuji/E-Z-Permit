@@ -21,6 +21,7 @@ E-Z Permit: a US founder enters a city and business type and gets an ordered per
 ### Auth and database (Supabase)
 - Email/password (with forgot/reset and change password at `/forgot-password` and `/account/password`) plus email magic links (asked for 2026-11-05, used by "Save my progress"). No OAuth unless asked.
 - `@supabase/ssr` with separate browser/server clients (`lib/supabase/`); session refresh in `proxy.ts`. Clients return `null` if env vars are missing.
+- Server code checks sign-in with `getClaims()` (verified locally against the project's ES256 keys, no auth round trip): `proxy.ts`, `getCurrentUser()`, `/api/generate-roadmap`. Payment routes keep the stricter `getUser()`.
 - Protect data with RLS, not just app code. `SUPABASE_SERVICE_ROLE_KEY` is server-only and read only in `lib/supabase/admin.ts`.
 - Migrations in `supabase/migrations/` are the schema source of truth and are **not applied automatically**: run in order in the Supabase SQL editor. Test SQL (including RLS) on PGlite before asking the owner to run it.
 
@@ -28,7 +29,7 @@ E-Z Permit: a US founder enters a city and business type and gets an ordered per
 - Do not reintroduce Gemini, add another provider, or use any paid model/plugin/feature.
 - Free is enforced in `lib/openrouter.ts` (the only place a model is created): only `openrouter/free` or ids ending `:free` (`isFreeModel`), else null; every request sends `provider.max_price = {prompt: 0, completion: 0}`; no plugins, no `:online` web search (billed).
 - AI is always optional: no key or a failed call falls back to built-in city data (`lib/seed/`, `lib/seed-roadmap.ts`). Never make a feature depend on it.
-- Free models are slow/flaky: `lib/roadmap-generate.ts` and `lib/research.ts` try twice, validate with Zod. Links/sources from the model are dropped; a "confirm with the agency" caveat is added.
+- Free models are slow/flaky: `lib/roadmap-generate.ts` and `lib/research.ts` try twice, validate with Zod. Roadmaps give the AI a 30 s total budget, and requests send `reasoning.effort = "low"` (the free router often picks reasoning models). Cities with built-in data (`hasCityData`) skip the AI entirely. Links/sources from the model are dropped; a "confirm with the agency" caveat is added.
 - Prompts contain only city and business type, never personal data.
 
 ### Payments: Paystack (test mode only)
@@ -63,6 +64,7 @@ E-Z Permit: a US founder enters a city and business type and gets an ordered per
 | 2026-10-31 | Gemini → OpenRouter, free models only, enforced in code; no web search; research mode also on OpenRouter (Anthropic removed); retry once then fall back |
 | 2026-11-03 | Deployed to Vercel production; env vars set there |
 | 2026-11-05 | Paywall switched off via `PAYWALL_ENABLED=false`; payment code and schema left untouched |
+| 2026-11-05 | Roadmap speed: built-in data first for the 7 seeded cities (instant); AI elsewhere within 30 s, low reasoning effort, then built-in fallback (measured: free router took 20-90+ s) |
 | 2026-11-05 | Added public SEO guides, magic-link save/track progress, community duration reports (migration `20261105000000`). Guide content stays in `lib/seed` (not duplicated in the DB); step ids are title slugs; reports are keyed by city (`tx/austin`) so shared steps like the EIN pool across business types |
 
 ## Open items

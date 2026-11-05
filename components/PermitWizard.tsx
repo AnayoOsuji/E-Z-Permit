@@ -18,8 +18,8 @@ import { EMPTY_VALUES, draftKey, parseDraft, serializeDraft } from "../lib/wizar
 import { ANALYSIS_STAGES, AnalysisOverlay } from "./AnalysisOverlay.tsx";
 import { useSnackbar } from "./Snackbar.tsx";
 
-const MS_PER_STAGE = 900;
-// Seeded answers return instantly; hold the overlay long enough to read each stage.
+const MS_PER_STAGE = 300;
+// Built-in answers return instantly; hold the overlay just long enough to see each stage tick by (~1.5 s total).
 const MIN_ANALYSIS_MS = ANALYSIS_STAGES.length * MS_PER_STAGE;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -120,7 +120,7 @@ export function PermitWizard({ userId, initial }: { userId: string; initial?: Wi
       await sleep(Math.max(0, MIN_ANALYSIS_MS - (Date.now() - startedAt)));
       if (controller.signal.aborted) return;
       setStage(ANALYSIS_STAGES.length);
-      await sleep(500);
+      await sleep(250);
       if (controller.signal.aborted) return;
       // The roadmap is saved, so the draft is done with. The overlay stays up while the roadmap page loads.
       try {

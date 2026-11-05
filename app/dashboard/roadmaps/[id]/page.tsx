@@ -35,14 +35,16 @@ export default async function RoadmapPage({
   if (!supabase) notFound();
 
   // Row Level Security means this only finds the roadmap if it belongs to the signed-in user.
-  const { data: roadmap } = await supabase
-    .from("roadmaps")
-    .select("id, city, state, business_type, steps, step_count, source, created_at")
-    .eq("id", id)
-    .maybeSingle();
+  // The profile is read at the same time; neither lookup needs the other. With the paywall off, steps 4+ are needed
+  // whatever the profile says, so they're fetched in the same round (with the service role, since RLS only lets
+  // premium users read that table) and only used below once the RLS lookup has confirmed the roadmap is theirs.
+  const earlyReader = PAYWALL_ENABLED ? null : createAdminClient() ?? supabase;
+  const [{ data: roadmap }, { data: profile }, early] = await Promise.all([
+    supabase.from("roadmaps").select("id, city, state, business_type, steps, step_count, source, created_at").eq("id", id).maybeSingle(),
+    supabase.from("profiles").select("is_premium").eq("id", user.id).maybeSingle(),
+    earlyReader ? earlyReader.from("roadmap_premium_steps").select("steps").eq("roadmap_id", id).maybeSingle() : null,
+  ]);
   if (!roadmap) notFound();
-
-  const { data: profile } = await supabase.from("profiles").select("is_premium").eq("id", user.id).maybeSingle();
   const isPremium = profile?.is_premium === true;
   const unlocked = isPremium || !PAYWALL_ENABLED;
 
@@ -52,8 +54,7 @@ export default async function RoadmapPage({
   if (unlocked) {
     // Ownership was already checked above (RLS). With the paywall off, free users' steps 4+ are read with
     // the service role, because RLS only lets premium users read that table.
-    const reader = (!isPremium && createAdminClient()) || supabase;
-    const { data: locked } = await reader.from("roadmap_premium_steps").select("steps").eq("roadmap_id", id).maybeSingle();
+    const { data: locked } = early ?? (await ((!isPremium && createAdminClient()) || supabase).from("roadmap_premium_steps").select("steps").eq("roadmap_id", id).maybeSingle());
     const lockedParsed = z.array(RoadmapStep).safeParse(locked?.steps);
     premiumSteps = lockedParsed.success ? lockedParsed.data : null;
   }

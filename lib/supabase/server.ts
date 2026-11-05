@@ -1,5 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
-import type { SupabaseClient, User } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { supabaseEnv } from "./env.ts";
 
@@ -23,10 +23,18 @@ export async function createClient(): Promise<SupabaseClient | null> {
   });
 }
 
-/** The signed-in user, verified with Supabase Auth, or null. */
-export async function getCurrentUser(): Promise<User | null> {
+export type CurrentUser = { id: string; email: string | null };
+
+/**
+ * The signed-in user, or null. Verified from the session token's signature (getClaims), which needs no call to the
+ * auth server with this project's asymmetric signing keys. A sign-out elsewhere takes effect when the token expires
+ * (at most an hour); payment routes use the stricter getUser() instead.
+ */
+export async function getCurrentUser(): Promise<CurrentUser | null> {
   const supabase = await createClient();
   if (!supabase) return null;
-  const { data } = await supabase.auth.getUser();
-  return data.user;
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims?.sub) return null;
+  return { id: claims.sub, email: typeof claims.email === "string" ? claims.email : null };
 }

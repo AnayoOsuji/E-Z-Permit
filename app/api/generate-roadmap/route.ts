@@ -1,7 +1,7 @@
 import { RoadmapRequest, RoadmapStep, dailyRoadmapLimit } from "../../../lib/roadmap.ts";
 import { generateRoadmapSteps } from "../../../lib/roadmap-generate.ts";
 import { FREE_STEP_LIMIT, PAYWALL_ENABLED, lockSteps } from "../../../lib/roadmap-view.ts";
-import { seedRoadmap } from "../../../lib/seed-roadmap.ts";
+import { hasCityData, seedRoadmap } from "../../../lib/seed-roadmap.ts";
 import { roadmapModel } from "../../../lib/roadmap-model.ts";
 import { createClient } from "../../../lib/supabase/server.ts";
 
@@ -13,29 +13,30 @@ const fail = (error: string, status: number) => Response.json({ error }, { statu
 // Body: { city, state, business_type }. Returns { id, source, roadmap: RoadmapStep[] } after saving the
 // roadmap for the signed-in user: the first 3 steps in `roadmaps`, the rest in `roadmap_premium_steps`
 // (readable only by premium users). Free accounts get steps 4+ redacted in the response too.
-// If the AI model is missing or fails, the roadmap is built from the built-in city data instead (free).
+// Cities with built-in data skip the AI entirely (instant); elsewhere, if the AI model is missing, too slow or fails,
+// the roadmap is built from the built-in general data instead (free).
 export async function POST(req: Request) {
   const supabase = await createClient();
   if (!supabase) return fail("Sign-in isn't configured on this server.", 503);
 
-  // Check who is calling before spending anything on the model.
-  const { data } = await supabase.auth.getUser();
-  const user = data.user;
-  if (!user) return fail("Sign in to generate a roadmap.", 401);
+  // Check who is calling before spending anything on the model. getClaims verifies the token locally (no auth round trip).
+  const { data } = await supabase.auth.getClaims();
+  const userId = data?.claims?.sub;
+  if (!userId) return fail("Sign in to generate a roadmap.", 401);
+  const user = { id: userId };
 
   const parsed = RoadmapRequest.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Enter a city, a state and a business type.", 400);
 
   // Daily cap per user, counted from saved roadmaps (failed generations aren't saved, so they don't count).
-  const { data: profile } = await supabase.from("profiles").select("is_premium").eq("id", user.id).maybeSingle();
+  // The two lookups are independent, so they run together.
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const [{ data: profile }, { count, error: countError }] = await Promise.all([
+    supabase.from("profiles").select("is_premium").eq("id", user.id).maybeSingle(),
+    supabase.from("roadmaps").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", since),
+  ]);
   const isPremium = profile?.is_premium === true;
   const limit = dailyRoadmapLimit(isPremium);
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const { count, error: countError } = await supabase
-    .from("roadmaps")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .gte("created_at", since);
   if (countError) {
     console.error("generate-roadmap: usage check failed", countError);
     return fail("We couldn't check your usage just now. Please try again.", 503);
@@ -47,10 +48,11 @@ export async function POST(req: Request) {
     );
   }
 
-  // Generate with the AI model; if that's unavailable or fails, fall back to the free built-in data.
+  // Cities with verified built-in data get it instantly. Elsewhere, try the AI model (within its time budget);
+  // if that's unavailable, slow or fails, fall back to the free built-in general roadmap.
   let steps: RoadmapStep[] | null = null;
   let source: "ai" | "built-in" = "ai";
-  const model = roadmapModel();
+  const model = hasCityData(parsed.data) ? null : roadmapModel();
   if (model) {
     try {
       steps = await generateRoadmapSteps(model, parsed.data, { signal: req.signal });

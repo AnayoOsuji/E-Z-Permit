@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { MIN_STEPS, RoadmapStep } from "../lib/roadmap.ts";
-import { estimateDifficulty, formatCost, seedRoadmap } from "../lib/seed-roadmap.ts";
+import { estimateDifficulty, formatCost, seedRoadmap, hasCityData } from "../lib/seed-roadmap.ts";
 import { SEED_CITIES } from "../lib/seed/index.ts";
 
 const BUSINESSES = ["Food Truck", "Home Bakery", "Hair Salon", "Coffee Shop restaurant", "Dog Grooming", "Retail Shop"];
@@ -49,4 +49,11 @@ test("difficulty estimate", () => {
   assert.equal(estimateDifficulty({ costMax: 20, forms: ["A", "B"] }), "Medium");
   assert.equal(estimateDifficulty({ costMax: 500, forms: [] }), "Medium");
   assert.equal(estimateDifficulty({ costMax: 600, forms: [] }), "High");
+});
+
+test("hasCityData is true only for cities with built-in data", () => {
+  assert.equal(hasCityData({ city: "Austin", state: "TX" }), true);
+  assert.equal(hasCityData({ city: "new york", state: "ny" }), true);
+  assert.equal(hasCityData({ city: "Boise", state: "ID" }), false);
+  assert.equal(hasCityData({ city: "Austin", state: "CA" }), false);
 });

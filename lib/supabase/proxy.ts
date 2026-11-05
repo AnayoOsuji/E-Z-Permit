@@ -1,10 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
-import type { User } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseEnv } from "./env.ts";
 
-/** Refreshes the auth cookies on every request and reports who is signed in. */
-export async function updateSession(request: NextRequest): Promise<{ response: NextResponse; user: User | null }> {
+/** Refreshes the auth cookies on every request and reports who is signed in (by user id). */
+export async function updateSession(request: NextRequest): Promise<{ response: NextResponse; user: { id: string } | null }> {
   let response = NextResponse.next({ request });
   const env = supabaseEnv();
   if (!env) return { response, user: null };
@@ -20,7 +19,10 @@ export async function updateSession(request: NextRequest): Promise<{ response: N
     },
   });
 
-  // Don't put code between createServerClient and getUser: getUser is what refreshes the session.
-  const { data } = await supabase.auth.getUser();
-  return { response, user: data.user };
+  // Don't put code between createServerClient and getClaims: it is what refreshes the session.
+  // getClaims verifies the access token locally with the project's signing keys (ES256), so unlike getUser it
+  // doesn't call the auth server on every request.
+  const { data } = await supabase.auth.getClaims();
+  const sub = data?.claims?.sub;
+  return { response, user: sub ? { id: sub } : null };
 }

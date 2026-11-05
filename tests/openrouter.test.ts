@@ -95,6 +95,7 @@ test("research mode: free model, no web search, invented links stripped", async 
   assert.equal(requests.length, 1);
   assert.equal(requests[0].model, "openrouter/free");
   assert.deepEqual((requests[0].provider as { max_price: unknown }).max_price, { prompt: 0, completion: 0 });
+  assert.deepEqual(requests[0].reasoning, { effort: "low" }, "low reasoning effort keeps free reasoning models fast");
   assert.equal(requests[0].plugins, undefined);
 });
 

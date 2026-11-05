@@ -78,7 +78,7 @@ test("after the last attempt fails it throws, so the caller can use the free bui
   );
 });
 
-test("a slow model is cut off by the per-attempt timeout", async () => {
+test("a slow model is cut off by the overall time budget, with no retry once the time is spent", async () => {
   const server = createServer(() => {
     /* never answers */
   });
@@ -87,13 +87,26 @@ test("a slow model is cut off by the per-attempt timeout", async () => {
     const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/v1`;
     const model = openRouterModel("openrouter/free", { OPENROUTER_API_KEY: "sk-or-test", OPENROUTER_API_BASE: base });
     assert.ok(model);
+    let requests = 0;
+    server.on("request", () => requests++);
     const started = Date.now();
-    await quiet(() => assert.rejects(generateRoadmapSteps(model, REQ, { attempts: 2, attemptTimeoutMs: 300 })));
-    assert.ok(Date.now() - started < 5000, "gave up quickly instead of hanging");
+    await quiet(() => assert.rejects(generateRoadmapSteps(model, REQ, { attempts: 2, budgetMs: 400 })));
+    const took = Date.now() - started;
+    assert.ok(took < 1500, `gave up at the budget instead of hanging (took ${took} ms)`);
+    assert.equal(requests, 1, "the first attempt used the whole budget, so no second request");
   } finally {
     server.closeAllConnections?.();
     server.close();
   }
+});
+
+test("a quick failure still gets its retry within the budget", async () => {
+  await quiet(() =>
+    withServer(["not json", JSON.stringify({ elements: goodSteps })], async (model, requests) => {
+      assert.equal((await generateRoadmapSteps(model, REQ, { budgetMs: 5000 })).length, 3);
+      assert.equal(requests(), 2);
+    }),
+  );
 });
 
 test("if the visitor leaves, it stops immediately without retrying", async () => {
